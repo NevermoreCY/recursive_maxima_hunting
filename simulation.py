@@ -1,5 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.model_selection import GridSearchCV, train_test_split
+import skfda
+from skfda.ml.classification import KNeighborsClassifier
+from skfda.preprocessing.dim_reduction.variable_selection.maxima_hunting import select_local_maxima
+from skfda.preprocessing.dim_reduction import variable_selection
+from skfda.preprocessing.dim_reduction.variable_selection.\
+    maxima_hunting import RelativeLocalMaximaSelector
+from skfda.datasets import make_gaussian_process
 
 
 def indicator_function(left,right,s):
@@ -32,7 +40,9 @@ def brownian_motion(n=10000, d=200, T = 1.):
     #  * law of the iterated logarithm for brownian motion
 
 
-def peak1(k,m,n=10000,d=200,T=1.):
+def peak1(n=10000,d=200,T=1.):
+    k = 3
+    m = 3
     times = np.linspace(0., T, n)
     dt = times[1] - times[0]
 
@@ -149,7 +159,14 @@ def square(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B,B2,avg_line
+    plt.plot(times,B)
+    plt.plot(times,avg_line, color='black', linewidth=5)
+    plt.ylim((-3, 3))
+    plt.title("B")
+    plt.show()
+    plt.close()
+
+    return B, B2,avg_line
 
 
 def sin(n=10000,d=200,T=1.):
@@ -180,19 +197,71 @@ def sin(n=10000,d=200,T=1.):
     return B,B2,avg_line
 
 
+def mix_data(B, B2):
+    # B shape: (n,d)
+    # B2 shape: (n,d)
+    n,d = B.shape
+
+    X = np.concatenate( (B,B2),axis= 0)
+    y = np.array([0] * n + [1] * n)
+
+    return X , y
+
+
 if __name__== '__main__':
 
-    n = 10000
-    d = 100
+    n = 1000 # we need at most 2000 = 2*n samples
+    d = 200  # trajectories are discretized in 200 points as state in paper
+
 
     # peak 1
-    # B,B2,avg_line = peak1(3,3,n=10000,d=100,T=1.)
+    B,B2,avg_line = peak1(n=n, d=d, T=1.)
 
     # peak 2
-    # B, B2, avg_line = peak2(n=10000, d=100, T=1.)
+    # B, B2, avg_line = peak2(n=n, d=d, T=1.)
 
     # Square
-    B, B2, avg_line = square(n=10000, d=100, T=1.)
+    # B,B2, avg_line = square(n=n, d=d, T=1.)
 
     # Sin
-    # B, B2, avg_line = sin(n=10000, d=100, T=1.)
+    # B, B2, avg_line = sin(n=n, d=d, T=1.)
+
+    # mix B and B2 data
+    X, y = mix_data(B,B2)
+
+    # TODO : apply dimension reduction method before going to KNN
+    # there are 5 algorithms we need to perform : MH, RMH, PCA, PLS , Base(no reduction)
+
+
+    # we will perform algoriht on 5 different training size
+    for train_size in [50]:
+        test_size = 1000 # test size is always set to 1000
+        # Get dataset for KNN
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            train_size=train_size,
+            test_size=test_size,
+            stratify=y,
+            random_state=0,
+        )
+
+        train_data_size = X_train.shape[0]
+        # # Only odd numbers, to prevent ties
+        param_grid = {"n_neighbors": range(1, int(np.sqrt(train_data_size)), 2)}
+        #
+        #
+        knn = KNeighborsClassifier()
+        #
+        # Perform grid search with cross-validation
+        gscv = GridSearchCV(knn, param_grid, cv=10)
+        gscv.fit(X_train, y_train)
+        #
+        #
+        print("For train size = ", train_size , " test size = " , test_size)
+        print("Best params:", gscv.best_params_)
+        print("Best cross-validation score:", gscv.best_score_)  # note this score is still on training set
+
+        # print test set score
+        score = gscv.score(X_test, y_test)
+        print("test set score :", score)
