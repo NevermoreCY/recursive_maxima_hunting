@@ -8,7 +8,9 @@ from skfda.preprocessing.dim_reduction import variable_selection
 from skfda.preprocessing.dim_reduction.variable_selection.\
     maxima_hunting import RelativeLocalMaximaSelector
 from skfda.datasets import make_gaussian_process
-
+from tqdm import tqdm
+import random
+from skfda.representation.grid import FDataGrid
 
 def indicator_function(left,right,s):
     if left <= s <= right:
@@ -71,7 +73,7 @@ def peak1(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B,B2,avg_line
+    return B,B2,avg_line , times
 
 def peak2(n=10000,d=200,T=1.):
 
@@ -131,7 +133,7 @@ def peak2(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B,B2,avg_line
+    return B,B2,avg_line , times
 
 
 def square(n=10000,d=200,T=1.):
@@ -166,7 +168,7 @@ def square(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B, B2,avg_line
+    return B, B2,avg_line , times
 
 
 def sin(n=10000,d=200,T=1.):
@@ -194,74 +196,96 @@ def sin(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B,B2,avg_line
+    return B,B2,avg_line, times
 
 
-def mix_data(B, B2):
+def mix_data(B, B2 , grid_points):
     # B shape: (n,d)
     # B2 shape: (n,d)
     n,d = B.shape
 
-    X = np.concatenate( (B,B2),axis= 0)
-    y = np.array([0] * n + [1] * n)
+    X = np.concatenate( (B.T,B2.T),axis= 0)
+    y = np.array([0] * d + [1] * d)
+    X = FDataGrid(X, grid_points)
 
     return X , y
 
 
 if __name__== '__main__':
 
-    n = 1000 # we need at most 2000 = 2*n samples
-    d = 200  # trajectories are discretized in 200 points as state in paper
+    n = 200   #  trajectories are discretized in 200 points as state in paper
+    d = 1000  #  we will have at most 2000 features
 
 
     # peak 1
-    B,B2,avg_line = peak1(n=n, d=d, T=1.)
+    B, B2, avg_line , grid_points= peak1(n=n, d=d, T=1.)
 
     # peak 2
-    # B, B2, avg_line = peak2(n=n, d=d, T=1.)
+    # B, B2, avg_line , grid_points = peak2(n=n, d=d, T=1.)
 
     # Square
-    # B,B2, avg_line = square(n=n, d=d, T=1.)
+    # B,B2, avg_line , grid_points = square(n=n, d=d, T=1.)
 
     # Sin
-    # B, B2, avg_line = sin(n=n, d=d, T=1.)
+    # B, B2, avg_line, grid_points = sin(n=n, d=d, T=1.)
 
     # mix B and B2 data
-    X, y = mix_data(B,B2)
+    X, y = mix_data(B,B2, grid_points)
+    #
+    # # TODO : apply dimension reduction method before going to KNN
+    # # there are 5 algorithms we need to perform : MH, RMH, PCA, PLS , Base(no reduction)
+    #
 
-    # TODO : apply dimension reduction method before going to KNN
-    # there are 5 algorithms we need to perform : MH, RMH, PCA, PLS , Base(no reduction)
 
 
+
+    #
+    avg_scores = []
     # we will perform algoriht on 5 different training size
-    for train_size in [50]:
-        test_size = 1000 # test size is always set to 1000
-        # Get dataset for KNN
-        X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
-            train_size=train_size,
-            test_size=test_size,
-            stratify=y,
-            random_state=0,
-        )
 
-        train_data_size = X_train.shape[0]
-        # # Only odd numbers, to prevent ties
-        param_grid = {"n_neighbors": range(1, int(np.sqrt(train_data_size)), 2)}
-        #
-        #
-        knn = KNeighborsClassifier()
-        #
-        # Perform grid search with cross-validation
-        gscv = GridSearchCV(knn, param_grid, cv=10)
-        gscv.fit(X_train, y_train)
-        #
-        #
-        print("For train size = ", train_size , " test size = " , test_size)
-        print("Best params:", gscv.best_params_)
-        print("Best cross-validation score:", gscv.best_score_)  # note this score is still on training set
+    for train_size in [50, 100, 200, 500, 1000]:
+        print("train size" , train_size)
+        repetition = 200
+        test_scores = []
+        for i in tqdm(range(repetition)):
+            rand_int = random.randint(0, 9999999)
+            test_size = 1000 # test size is always set to 1000
+            # Get dataset for KNN
+            X_train, X_test, y_train, y_test = train_test_split(
+                X,
+                y,
+                train_size=train_size,
+                test_size=test_size,
+                stratify=y,
+                random_state=rand_int,
+            )
 
-        # print test set score
-        score = gscv.score(X_test, y_test)
-        print("test set score :", score)
+            train_data_size = X_train.shape[0]
+            # # Only odd numbers, to prevent ties
+            param_grid = {"n_neighbors": range(1, int(np.sqrt(train_data_size)), 2)}
+            #
+            #
+            knn = KNeighborsClassifier()
+            #
+            # Perform grid search with cross-validation
+            gscv = GridSearchCV(knn, param_grid, cv=10)
+            gscv.fit(X_train, y_train)
+            #
+            #
+            # print("For train size = ", train_size , " test size = " , test_size)
+            # print("Best params:", gscv.best_params_)
+            # print("Best cross-validation score:", gscv.best_score_)  # note this score is still on training set
+
+            # print test set score
+            score = gscv.score(X_test, y_test)
+            # print("test set score :", score)
+            test_scores.append(score)
+        avg_score = 1 - np.average(test_scores)
+        avg_scores.append(avg_score)
+        print("average score", avg_score)
+
+
+
+# results:
+
+# peak 2 [0.752635, 0.7819850000000002, 0.8023500000000001, 0.813125, 0.8140850000000001]
