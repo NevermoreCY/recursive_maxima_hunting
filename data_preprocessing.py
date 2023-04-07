@@ -3,6 +3,9 @@ import numpy as np
 
 import ssl
 from simulation import peak1,peak2,sin,square,mix_data
+from skfda.preprocessing.smoothing import KernelSmoother
+from skfda.misc.hat_matrix import NadarayaWatsonHatMatrix
+from skfda.misc.kernels import normal
 ssl._create_default_https_context = ssl._create_unverified_context
 
 n = 200  # trajectories are discretized in 200 points as state in paper
@@ -23,6 +26,7 @@ def get_phoneme():
     y = y[(y == 0) | (y == 1)]
     n_points = 50
 
+
     new_points = X.grid_points[0][:n_points]
     new_data = X.data_matrix[:, :n_points]
 
@@ -31,7 +35,10 @@ def get_phoneme():
         data_matrix=new_data,
         domain_range=(np.min(new_points), np.max(new_points)),
     )
-    return X, y
+
+    smoother = KernelSmoother(NadarayaWatsonHatMatrix(bandwidth=0.2))
+    X_smooth = smoother.fit_transform(X)
+    return X_smooth, y
 
 def get_tecator():
     X, y = skfda.datasets.fetch_tecator(return_X_y=True, as_frame=True)
