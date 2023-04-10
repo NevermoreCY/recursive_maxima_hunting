@@ -70,7 +70,7 @@ def peak1(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B2,avg_line , times
+    return B,B2,avg_line , times
 
 def peak2(n=10000,d=200,T=1.):
 
@@ -130,7 +130,7 @@ def peak2(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B2,avg_line , times
+    return B, B2,avg_line , times
 
 
 def square(n=10000,d=200,T=1.):
@@ -165,7 +165,7 @@ def square(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B2,avg_line , times
+    return B, B2,avg_line , times
 
 
 def sin(n=10000,d=200,T=1.):
@@ -193,7 +193,7 @@ def sin(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B2,avg_line, times
+    return B, B2,avg_line, times
 
 
 def tanh(n=10000,d=200,T=1.):
@@ -221,7 +221,7 @@ def tanh(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B2,avg_line, times
+    return B, B2,avg_line, times
 
 
 def exp(n=10000,d=200,T=1.):
