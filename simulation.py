@@ -1,16 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import GridSearchCV, train_test_split
-import skfda
 from skfda.ml.classification import KNeighborsClassifier
-from skfda.preprocessing.dim_reduction.variable_selection.maxima_hunting import select_local_maxima
-from skfda.preprocessing.dim_reduction import variable_selection
-from skfda.preprocessing.dim_reduction.variable_selection.\
-    maxima_hunting import RelativeLocalMaximaSelector
-from skfda.datasets import make_gaussian_process
+from skfda.representation.grid import FDataGrid
 from tqdm import tqdm
 import random
-from skfda.representation.grid import FDataGrid
+
+
+
 
 def indicator_function(left,right,s):
     if left <= s <= right:
@@ -73,7 +70,7 @@ def peak1(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B,B2,avg_line , times
+    return B2,avg_line , times
 
 def peak2(n=10000,d=200,T=1.):
 
@@ -133,7 +130,7 @@ def peak2(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B,B2,avg_line , times
+    return B2,avg_line , times
 
 
 def square(n=10000,d=200,T=1.):
@@ -168,7 +165,7 @@ def square(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B, B2,avg_line , times
+    return B2,avg_line , times
 
 
 def sin(n=10000,d=200,T=1.):
@@ -196,8 +193,62 @@ def sin(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B,B2,avg_line, times
+    return B2,avg_line, times
 
+
+def tanh(n=10000,d=200,T=1.):
+
+    times = np.linspace(0., T, n)
+    dt = times[1] - times[0]
+
+    m_values= []
+    # print(times[-10:])
+    for s in times:
+        m_values.append(np.tanh(4 * s))
+
+    # print(m_values[-10:])
+    dB = np.sqrt(dt) * np.random.normal(size=(n - 1, d))
+    B0 = np.zeros(shape=(1,d))
+    B = np.concatenate((B0, np.cumsum(dB, axis=0)), axis=0)
+    B2 = B + np.array([m_values]).T
+    avg_line = np.average(B2, axis=1)
+
+    # plt.plot(times,B)
+    plt.plot(times,B2)
+    plt.plot(times,avg_line, color='black', linewidth=5)
+    plt.ylim((-3, 3))
+    plt.title("sin")
+    plt.show()
+    plt.close()
+
+    return B2,avg_line, times
+
+
+def exp(n=10000,d=200,T=1.):
+
+    times = np.linspace(0., T, n)
+    dt = times[1] - times[0]
+
+    m_values= []
+
+    for s in times:
+        m_values.append(np.exp(s) -1 )
+
+    dB = np.sqrt(dt) * np.random.normal(size=(n - 1, d))
+    B0 = np.zeros(shape=(1,d))
+    B = np.concatenate((B0, np.cumsum(dB, axis=0)), axis=0)
+    B2 = B + np.array([m_values]).T
+    avg_line = np.average(B2, axis=1)
+
+    # plt.plot(times,B)
+    plt.plot(times,B2)
+    plt.plot(times,avg_line, color='black', linewidth=5)
+    plt.ylim((-3, 3))
+    plt.title("sin")
+    plt.show()
+    plt.close()
+
+    return B2,avg_line, times
 
 def mix_data(B, B2 , grid_points):
     # B shape: (n,d)
@@ -214,39 +265,35 @@ def mix_data(B, B2 , grid_points):
 if __name__== '__main__':
 
     n = 200   #  trajectories are discretized in 200 points as state in paper
-    d = 1000  #  we will have at most 2000 features
+    d = 1000  #  we will have at most 2000 samples
 
+    # standard brownian motion
+    B = brownian_motion(n=n, d=d, T=1.)
 
     # peak 1
-    B, B2, avg_line , grid_points= peak1(n=n, d=d, T=1.)
+    # B2, avg_line , grid_points= peak1(n=n, d=d, T=1.)
 
     # peak 2
-    # B, B2, avg_line , grid_points = peak2(n=n, d=d, T=1.)
+    # B2, avg_line , grid_points = peak2(n=n, d=d, T=1.)
 
     # Square
-    # B,B2, avg_line , grid_points = square(n=n, d=d, T=1.)
+    # B2, avg_line , grid_points = square(n=n, d=d, T=1.)
 
     # Sin
-    # B, B2, avg_line, grid_points = sin(n=n, d=d, T=1.)
+    B2, avg_line, grid_points = sin(n=n, d=d, T=1.)
 
     # mix B and B2 data
     X, y = mix_data(B,B2, grid_points)
-    #
-    # # TODO : apply dimension reduction method before going to KNN
-    # # there are 5 algorithms we need to perform : MH, RMH, PCA, PLS , Base(no reduction)
-    #
 
-
-
-
-    #
     avg_scores = []
+    avg_dimensions = []
     # we will perform algoriht on 5 different training size
 
     for train_size in [50, 100, 200, 500, 1000]:
         print("train size" , train_size)
         repetition = 200
         test_scores = []
+        dimension = []
         for i in tqdm(range(repetition)):
             rand_int = random.randint(0, 9999999)
             test_size = 1000 # test size is always set to 1000
@@ -259,6 +306,7 @@ if __name__== '__main__':
                 stratify=y,
                 random_state=rand_int,
             )
+
 
             train_data_size = X_train.shape[0]
             # # Only odd numbers, to prevent ties
@@ -281,8 +329,11 @@ if __name__== '__main__':
             # print("test set score :", score)
             test_scores.append(score)
         avg_score = 1 - np.average(test_scores)
+        avg_dimension = np.average(dimension)
         avg_scores.append(avg_score)
+        avg_dimensions.append(avg_dimension)
         print("average score", avg_score)
+        print("average dimension", avg_dimension)
 
 
 

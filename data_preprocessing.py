@@ -2,7 +2,7 @@ import skfda
 import numpy as np
 
 import ssl
-from simulation import peak1,peak2,sin,square,mix_data
+from simulation import peak1,peak2,sin,square,mix_data,exp,tanh
 from skfda.preprocessing.smoothing import KernelSmoother
 from skfda.misc.hat_matrix import NadarayaWatsonHatMatrix
 from skfda.misc.kernels import normal
@@ -74,5 +74,15 @@ def get_simulation_square():
 
 def get_simulation_sin():
     B, B2, avg_line, grid_points = sin(n=n, d=d, T=1.)
+    X, y = mix_data(B,B2, grid_points)
+    return X,y
+
+def get_simulation_tanh():
+    B, B2, avg_line, grid_points = tanh(n=n, d=d, T=1.)
+    X, y = mix_data(B,B2, grid_points)
+    return X,y
+
+def get_simulation_exp():
+    B, B2, avg_line, grid_points = exp(n=n, d=d, T=1.)
     X, y = mix_data(B,B2, grid_points)
     return X,y
