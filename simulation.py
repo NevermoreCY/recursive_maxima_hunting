@@ -248,7 +248,7 @@ def exp(n=10000,d=200,T=1.):
     plt.show()
     plt.close()
 
-    return B2,avg_line, times
+    return B, B2,avg_line, times
 
 def mix_data(B, B2 , grid_points):
     # B shape: (n,d)
@@ -261,82 +261,12 @@ def mix_data(B, B2 , grid_points):
 
     return X , y
 
+def mix_data_arr(B, B2 , grid_points):
+    # B shape: (n,d)
+    # B2 shape: (n,d)
+    n,d = B.shape
 
-if __name__== '__main__':
+    X = np.concatenate( (B.T,B2.T),axis= 0)
+    y = np.array([0] * d + [1] * d)
 
-    n = 200   #  trajectories are discretized in 200 points as state in paper
-    d = 1000  #  we will have at most 2000 samples
-
-    # standard brownian motion
-    B = brownian_motion(n=n, d=d, T=1.)
-
-    # peak 1
-    # B2, avg_line , grid_points= peak1(n=n, d=d, T=1.)
-
-    # peak 2
-    # B2, avg_line , grid_points = peak2(n=n, d=d, T=1.)
-
-    # Square
-    # B2, avg_line , grid_points = square(n=n, d=d, T=1.)
-
-    # Sin
-    B2, avg_line, grid_points = sin(n=n, d=d, T=1.)
-
-    # mix B and B2 data
-    X, y = mix_data(B,B2, grid_points)
-
-    avg_scores = []
-    avg_dimensions = []
-    # we will perform algoriht on 5 different training size
-
-    for train_size in [50, 100, 200, 500, 1000]:
-        print("train size" , train_size)
-        repetition = 200
-        test_scores = []
-        dimension = []
-        for i in tqdm(range(repetition)):
-            rand_int = random.randint(0, 9999999)
-            test_size = 1000 # test size is always set to 1000
-            # Get dataset for KNN
-            X_train, X_test, y_train, y_test = train_test_split(
-                X,
-                y,
-                train_size=train_size,
-                test_size=test_size,
-                stratify=y,
-                random_state=rand_int,
-            )
-
-
-            train_data_size = X_train.shape[0]
-            # # Only odd numbers, to prevent ties
-            param_grid = {"n_neighbors": range(1, int(np.sqrt(train_data_size)), 2)}
-            #
-            #
-            knn = KNeighborsClassifier()
-            #
-            # Perform grid search with cross-validation
-            gscv = GridSearchCV(knn, param_grid, cv=10)
-            gscv.fit(X_train, y_train)
-            #
-            #
-            # print("For train size = ", train_size , " test size = " , test_size)
-            # print("Best params:", gscv.best_params_)
-            # print("Best cross-validation score:", gscv.best_score_)  # note this score is still on training set
-
-            # print test set score
-            score = gscv.score(X_test, y_test)
-            # print("test set score :", score)
-            test_scores.append(score)
-        avg_score = 1 - np.average(test_scores)
-        avg_dimension = np.average(dimension)
-        avg_scores.append(avg_score)
-        avg_dimensions.append(avg_dimension)
-        print("average score", avg_score)
-        print("average dimension", avg_dimension)
-
-
-
-# results:
-
-# peak 2 [0.752635, 0.7819850000000002, 0.8023500000000001, 0.813125, 0.8140850000000001]
+    return X , y
