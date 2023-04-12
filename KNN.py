@@ -16,13 +16,6 @@ X.plot(group=y.codes, group_names=y.categories)
 y = y.codes
 
 
-
-# TODO : apply dimension reduction method before going to KNN
-# there are 5 algorithms we need to perform : MH, RMH, PCA, PLS , Base(no reduction)
-
-
-
-
 # Get dataset for KNN
 
 X_train, X_test, y_train, y_test = train_test_split(
