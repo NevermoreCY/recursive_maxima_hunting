@@ -9,7 +9,7 @@ from skfda.misc.kernels import normal
 ssl._create_default_https_context = ssl._create_unverified_context
 
 n = 200  # trajectories are discretized in 200 points as state in paper
-d = 1000  # we will have at most 2000 features
+d = 1000  # we will have at most 2000 trajectories
 
 def get_growth():
     X, y = skfda.datasets.fetch_growth(return_X_y=True, as_frame=True)
