@@ -1,46 +1,68 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.model_selection import GridSearchCV, train_test_split
-import skfda
 from skfda.ml.classification import KNeighborsClassifier
+from tqdm import tqdm
+import random
+import data_preprocessing
+import Recursive_Maxima_Hunting
 
 
-# load and plot data
-X, y = skfda.datasets.fetch_growth(return_X_y=True, as_frame=True)
-X = X.iloc[:, 0].values
-y = y.values
+# load the data
+X, y = data_preprocessing.get_growth()
+model_name= "RMH"
+data_set = "growth"
 
-# Plot samples grouped by sex
-X.plot(group=y.codes, group_names=y.categories)
+# we will split the dataset repeatly for 200 times
+repetition = 200
+error = []
+dimension = []
 
-y = y.codes
+for i in tqdm(range(repetition)):
+    rand_int = random.randint(0, 9999999)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=(1 / 3),  # paper use 1/3 for test set
+        stratify=y,
+        random_state=rand_int,
+    )
 
 
-# Get dataset for KNN
+    # Load different dimension reduction algorithm here
+    # rmh = Recursive_Maxima_Hunting.Recursive_maxima_hunting()
+    # rmh_model = rmh.fit(X_train, y_train)
+    # X_train = rmh.transform(X_train)
+    # X_test = rmh.transform(X_test)
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=(1/3), # paper use 1/3 for test set
-    stratify=y,
-    random_state=0,
-)
 
-train_data_size = X_train.data_matrix.shape[0]
-# # Only odd numbers, to prevent ties
-param_grid = {"n_neighbors": range(1, int(np.sqrt(train_data_size)), 2)}
-#
-#
-knn = KNeighborsClassifier()
-#
-# Perform grid search with cross-validation
-gscv = GridSearchCV(knn, param_grid, cv=10)
-gscv.fit(X_train, y_train)
-#
-#
-print("Best params:", gscv.best_params_)
-print("Best cross-validation score:", gscv.best_score_) # note this score is still on training set
+    dim = X_train.shape[1]
+    dimension.append(dim)
 
-# print test set score
-score = gscv.score(X_test, y_test)
-print("test set score :", score)
+    train_data_size = X_train.shape[0]
+    # # Only odd numbers, to prevent ties
+    param_grid = {"n_neighbors": range(1, int(np.sqrt(train_data_size)), 1)}
+    #
+    #
+    knn = KNeighborsClassifier()
+    #
+    # Perform grid search with cross-validation
+    gscv = GridSearchCV(knn, param_grid, cv=10)
+    gscv.fit(X_train, y_train)
+
+    score = gscv.score(X_test, y_test)
+    error.append(1 - score)
+
+avg_test_error = np.average(error)
+avg_dimen = np.average(dimension)
+print("average test set error :", avg_test_error )
+print("average dimension  :", avg_dimen )
+
+import pickle
+# save the results
+out_path = model_name + "_" + data_set + "_result.pkl"
+out_result = {}
+out_result['error'] = error
+out_result['dimension'] = dimension
+with open(out_path, 'wb') as f:
+    pickle.dump(out_result, f)
+
